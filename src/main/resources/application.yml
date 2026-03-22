@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: leadmaps-pro-api
+  # Extração longa: dá tempo de terminar antes do SIGTERM (Render redeploy / scale).
+  lifecycle:
+    timeout-per-shutdown-phase: 90s
+  datasource:
+    # Local: PG*; Render: injeta DATABASE_URL (postgres://) — convertido em JDBC por RenderDatabaseUrlEnvironmentPostProcessor.
+    # Ou defina SPRING_DATASOURCE_URL=jdbc:postgresql://... manualmente.
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:leadmaps}
+    username: ${PGUSER:${DATABASE_USER:postgres}}
+    password: ${PGPASSWORD:${DATABASE_PASSWORD:postgres}}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+# Render, Fly, Railway etc. expõem a porta em PORT; local usa SERVER_PORT ou 8080.
+server:
+  port: ${PORT:${SERVER_PORT:8080}}
+
+leadmaps:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-change-me-leadmaps-pro-32chars-minimum-secret-key!!}
+    access-expiration-minutes: ${JWT_ACCESS_MINUTES:15}
+    refresh-expiration-days: ${JWT_REFRESH_DAYS:14}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
+  # Proxy residencial/datacenter (Bright Data, ScrapingBee via proxy URL, etc.)
+  playwright:
+    headless: ${PLAYWRIGHT_HEADLESS:true}
+    block-heavy-resources: ${PLAYWRIGHT_BLOCK_HEAVY:true}
+    navigation-timeout-ms: ${PLAYWRIGHT_NAV_TIMEOUT_MS:120000}
+    default-timeout-ms: ${PLAYWRIGHT_DEFAULT_TIMEOUT_MS:120000}
+    # Ex.: http://brd-customer-xxx-zone-residential:password@brd.superproxy.io:33335
+    proxy-server: ${PROXY_SERVER:}
+    proxy-username: ${PROXY_USERNAME:}
+    proxy-password: ${PROXY_PASSWORD:}
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:sk_test_placeholder}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
+    price-starter: ${STRIPE_PRICE_STARTER:price_starter_placeholder}
+    price-pro: ${STRIPE_PRICE_PRO:price_pro_placeholder}
+    price-agency: ${STRIPE_PRICE_AGENCY:price_agency_placeholder}
+    success-url: ${STRIPE_SUCCESS_URL:http://localhost:4200/precos?sucesso=1}
+    cancel-url: ${STRIPE_CANCEL_URL:http://localhost:4200/precos?cancelado=1}
+    portal-return-url: ${STRIPE_PORTAL_RETURN:http://localhost:4200/dashboard}
+  supabase:
+    # JWT issuer do projeto Supabase (Auth) — ex.: https://xxxx.supabase.co/auth/v1
+    jwt-issuer: ${SUPABASE_JWT_ISSUER:}
+    jwk-set-uri: ${SUPABASE_JWK_SET_URI:}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    show-sql: false

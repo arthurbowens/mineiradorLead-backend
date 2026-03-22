@@ -1,0 +1,19 @@
+# Blueprint Render — ajuste nomes no painel se quiser.
+# Depois de criar o Postgres no Render, use "Connect" e ligue ao Web Service.
+# Isso injeta DATABASE_URL (postgres://) — o app converte para JDBC automaticamente.
+
+services:
+  - type: web
+    name: leadmaps-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: JAVA_TOOL_OPTIONS
+        value: "-XX:MaxRAMPercentage=75"
+      # Gere um segredo forte (>= 32 chars) e cole no painel:
+      - key: JWT_SECRET
+        sync: false
+      # URL do seu front no Render (ex.: https://xxx.onrender.com)
+      - key: CORS_ORIGINS
+        sync: false
