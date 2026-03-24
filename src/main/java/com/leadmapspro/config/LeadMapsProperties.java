@@ -6,6 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class LeadMapsProperties {
 
     private final Cors cors = new Cors();
+    private final Extract extract = new Extract();
+    private final Apify apify = new Apify();
     private final Playwright playwright = new Playwright();
     private final Stripe stripe = new Stripe();
     private final Supabase supabase = new Supabase();
@@ -13,6 +15,14 @@ public class LeadMapsProperties {
 
     public Cors getCors() {
         return cors;
+    }
+
+    public Extract getExtract() {
+        return extract;
+    }
+
+    public Apify getApify() {
+        return apify;
     }
 
     public Playwright getPlaywright() {
@@ -75,14 +85,93 @@ public class LeadMapsProperties {
         }
     }
 
+    /** {@code playwright} = browser local. {@code apify} = Google Maps Scraper na Apify (API). */
+    public static class Extract {
+        private String provider = "playwright";
+
+        public String getProvider() {
+            return provider;
+        }
+
+        public void setProvider(String provider) {
+            this.provider = provider;
+        }
+
+        public boolean isApify() {
+            return "apify".equalsIgnoreCase(provider);
+        }
+    }
+
+    /** Ver Console Apify → Integrations → API token. Actor: id tipo {@code usuario~nome} ou id curto. */
+    public static class Apify {
+        private String token = "";
+        /** Ex.: compass~crawler-google-places ou ID curto do console Apify. */
+        private String actorId = "compass~crawler-google-places";
+        /** Código exigido pelo Actor (ex. pt-BR, en) — não use só "pt". */
+        private String language = "pt-BR";
+        private int pollIntervalMs = 3000;
+        /** Tempo máximo esperando o run (ms). */
+        private long maxWaitMs = 600_000L;
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
+        }
+
+        public String getActorId() {
+            return actorId;
+        }
+
+        public void setActorId(String actorId) {
+            this.actorId = actorId;
+        }
+
+        public String getLanguage() {
+            return language;
+        }
+
+        public void setLanguage(String language) {
+            this.language = language;
+        }
+
+        public int getPollIntervalMs() {
+            return pollIntervalMs;
+        }
+
+        public void setPollIntervalMs(int pollIntervalMs) {
+            this.pollIntervalMs = pollIntervalMs;
+        }
+
+        public long getMaxWaitMs() {
+            return maxWaitMs;
+        }
+
+        public void setMaxWaitMs(long maxWaitMs) {
+            this.maxWaitMs = maxWaitMs;
+        }
+
+        public boolean isConfigured() {
+            return token != null && !token.isBlank();
+        }
+    }
+
     public static class Playwright {
         private boolean headless = true;
-        /** Bloqueia imagem/fonte/mídia no Maps — menos RAM e CPU no Docker/Render. */
         private boolean blockHeavyResources = true;
-        /** Timeout de navegação (goto); Maps em datacenter pode precisar de mais tempo. */
         private int navigationTimeoutMs = 120_000;
-        /** Timeout padrão de ações (locator, click, etc.). */
         private int defaultTimeoutMs = 120_000;
+        /** Viewport menor = menos RAM no container (Railway etc.). */
+        private int viewportWidth = 1280;
+        private int viewportHeight = 720;
+        /**
+         * Pausa aleatória entre ações (ms). Padrão um pouco “humano”; no cloud pode aumentar max para
+         * reduzir throttling (não substitui proxy residencial).
+         */
+        private int actionDelayMinMs = 400;
+        private int actionDelayMaxMs = 1400;
         private String proxyServer = "";
         private String proxyUsername = "";
         private String proxyPassword = "";
@@ -117,6 +206,38 @@ public class LeadMapsProperties {
 
         public void setDefaultTimeoutMs(int defaultTimeoutMs) {
             this.defaultTimeoutMs = defaultTimeoutMs;
+        }
+
+        public int getViewportWidth() {
+            return viewportWidth;
+        }
+
+        public void setViewportWidth(int viewportWidth) {
+            this.viewportWidth = viewportWidth;
+        }
+
+        public int getViewportHeight() {
+            return viewportHeight;
+        }
+
+        public void setViewportHeight(int viewportHeight) {
+            this.viewportHeight = viewportHeight;
+        }
+
+        public int getActionDelayMinMs() {
+            return actionDelayMinMs;
+        }
+
+        public void setActionDelayMinMs(int actionDelayMinMs) {
+            this.actionDelayMinMs = actionDelayMinMs;
+        }
+
+        public int getActionDelayMaxMs() {
+            return actionDelayMaxMs;
+        }
+
+        public void setActionDelayMaxMs(int actionDelayMaxMs) {
+            this.actionDelayMaxMs = actionDelayMaxMs;
         }
 
         public String getProxyServer() {

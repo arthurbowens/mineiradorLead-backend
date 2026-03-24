@@ -14,6 +14,8 @@ services:
       # Gere um segredo forte (>= 32 chars) e cole no painel:
       - key: JWT_SECRET
         sync: false
-      # URL do seu front no Render (ex.: https://xxx.onrender.com)
+      # Front: origem exata, separada por vírgula (sem / no fim). Vercel ex.:
+      # https://mineirador-lead-frontend.vercel.app
+      # Local + prod: http://localhost:4200,https://mineirador-lead-frontend.vercel.app
       - key: CORS_ORIGINS
         sync: false

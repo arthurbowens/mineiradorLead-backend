@@ -1,8 +1,11 @@
 package com.leadmapspro.config;
 
 import com.leadmapspro.security.JwtAuthenticationFilter;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -21,11 +24,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfiguration {
 
-    private final LeadMapsProperties properties;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfiguration(LeadMapsProperties properties, JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.properties = properties;
+    public SecurityConfiguration(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
@@ -64,21 +65,45 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(Environment env) {
         CorsConfiguration cfg = new CorsConfiguration();
-        String origins = properties.getCors().getAllowedOrigins();
-        for (String o : origins.split(",")) {
+        /*
+         * Render define CORS_ORIGINS; Spring também aceita LEADMAPS_CORS_ALLOWED_ORIGINS.
+         * Lê direto do Environment para não depender só do binding em LeadMapsProperties.
+         */
+        String raw =
+                firstNonBlank(
+                        env.getProperty("CORS_ORIGINS"),
+                        env.getProperty("LEADMAPS_CORS_ALLOWED_ORIGINS"),
+                        env.getProperty("leadmaps.cors.allowed-origins"),
+                        "http://localhost:4200");
+        List<String> patterns = new ArrayList<>();
+        for (String o : raw.split(",")) {
             String t = o.trim();
             if (!t.isEmpty()) {
-                cfg.addAllowedOriginPattern(t);
+                patterns.add(t);
             }
         }
+        cfg.setAllowedOriginPatterns(patterns);
         cfg.addAllowedHeader("*");
         cfg.addAllowedMethod("*");
         cfg.setExposedHeaders(java.util.List.of("Authorization"));
         cfg.setAllowCredentials(true);
+        cfg.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
         return source;
+    }
+
+    private static String firstNonBlank(String... candidates) {
+        if (candidates == null) {
+            return "";
+        }
+        for (String s : candidates) {
+            if (s != null && !s.isBlank()) {
+                return s.trim();
+            }
+        }
+        return "";
     }
 }

@@ -20,7 +20,6 @@
     <properties>
         <java.version>17</java.version>
         <playwright.version>1.49.0</playwright.version>
-        <!-- Flyway ≥11: suporte testado a PostgreSQL mais recente (aviso PG 18 no Render). -->
         <flyway.version>11.7.2</flyway.version>
     </properties>
 

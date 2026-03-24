@@ -7,6 +7,8 @@ import com.leadmapspro.domain.AppUser;
 import com.leadmapspro.domain.Lead;
 import com.leadmapspro.domain.SearchHistory;
 import com.leadmapspro.domain.SearchStatus;
+import com.leadmapspro.apify.ApifyGoogleMapsActorClient;
+import com.leadmapspro.config.LeadMapsProperties;
 import com.leadmapspro.repository.AppUserRepository;
 import com.leadmapspro.repository.LeadRepository;
 import com.leadmapspro.repository.SearchHistoryRepository;
@@ -27,7 +29,9 @@ public class LeadExtractService {
     private final AppUserRepository userRepository;
     private final SearchHistoryRepository searchHistoryRepository;
     private final LeadRepository leadRepository;
+    private final LeadMapsProperties leadMapsProperties;
     private final GoogleMapsPlaywrightScraper scraper;
+    private final ApifyGoogleMapsActorClient apifyClient;
     private final SocialEnrichmentService enrichmentService;
     private final ExtractCompletionService completionService;
 
@@ -36,14 +40,18 @@ public class LeadExtractService {
             AppUserRepository userRepository,
             SearchHistoryRepository searchHistoryRepository,
             LeadRepository leadRepository,
+            LeadMapsProperties leadMapsProperties,
             GoogleMapsPlaywrightScraper scraper,
+            ApifyGoogleMapsActorClient apifyClient,
             SocialEnrichmentService enrichmentService,
             ExtractCompletionService completionService) {
         this.currentUserId = currentUserId;
         this.userRepository = userRepository;
         this.searchHistoryRepository = searchHistoryRepository;
         this.leadRepository = leadRepository;
+        this.leadMapsProperties = leadMapsProperties;
         this.scraper = scraper;
+        this.apifyClient = apifyClient;
         this.enrichmentService = enrichmentService;
         this.completionService = completionService;
     }
@@ -69,7 +77,17 @@ public class LeadExtractService {
         SearchHistory history = startHistory(user, request, fullQuery);
 
         try {
-            List<RawLeadRow> raw = scraper.scrape(request.getKeyword(), request.getLocation(), max);
+            List<RawLeadRow> raw;
+            if (leadMapsProperties.getExtract().isApify()) {
+                if (!leadMapsProperties.getApify().isConfigured()) {
+                    throw new ResponseStatusException(
+                            HttpStatus.SERVICE_UNAVAILABLE,
+                            "Modo Apify ativo: defina APIFY_TOKEN (Railway → Variables).");
+                }
+                raw = apifyClient.scrape(request.getKeyword(), request.getLocation(), max);
+            } else {
+                raw = scraper.scrape(request.getKeyword(), request.getLocation(), max);
+            }
             int toCharge = Math.min(raw.size(), max);
             List<Lead> saved = persistAndEnrich(history, raw.subList(0, toCharge));
             int newBalance = completionService.applySuccess(user, history, saved.size(), toCharge);

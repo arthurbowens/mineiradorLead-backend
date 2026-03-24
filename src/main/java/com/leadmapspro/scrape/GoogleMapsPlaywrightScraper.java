@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -72,16 +73,24 @@ public class GoogleMapsPlaywrightScraper {
                                             "--disable-setuid-sandbox",
                                             "--disable-dev-shm-usage",
                                             "--disable-gpu",
-                                            "--disable-extensions"));
+                                            "--disable-extensions",
+                                            // Menos processos/RAM em VM pequena (Railway free/hobby).
+                                            "--disable-background-networking",
+                                            "--disable-renderer-backgrounding",
+                                            "--disable-background-timer-throttling",
+                                            "--disable-backgrounding-occluded-windows",
+                                            "--renderer-process-limit=2"));
 
             Browser browser = playwright.chromium().launch(launch);
+            int vw = Math.max(800, pw.getViewportWidth());
+            int vh = Math.max(600, pw.getViewportHeight());
             Browser.NewContextOptions ctxOpts =
                     new Browser.NewContextOptions()
                             .setUserAgent(
                                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                                             + "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
                             .setLocale("pt-BR")
-                            .setViewportSize(1400, 900);
+                            .setViewportSize(vw, vh);
 
             if (pw.hasProxy()) {
                 Proxy proxy = new Proxy(pw.getProxyServer());
@@ -114,7 +123,7 @@ public class GoogleMapsPlaywrightScraper {
                     String placeUrl = placeUrls.get(i);
                     try {
                         navigateMaps(page, ensureAbsoluteMapsUrl(placeUrl));
-                        page.waitForTimeout(2000);
+                        actionDelay(page, 1200, 3200);
                         waitForDetailHints(page);
                         RawLeadRow row = extractFromDetailPanel(page);
                         if (row.name() != null && !row.name().isBlank()) {
@@ -123,13 +132,13 @@ public class GoogleMapsPlaywrightScraper {
                     } catch (Exception ex) {
                         log.warn("Falha ao extrair lugar {}: {}", placeUrl, ex.getMessage());
                     }
-                    page.waitForTimeout(400 + (i % 3) * 150);
+                    actionDelay(page);
                 }
 
                 if (rows.isEmpty()) {
                     log.warn("Extração por painel vazia; voltando à busca e tentando lista.");
                     navigateMaps(page, searchUrl);
-                    page.waitForTimeout(1500);
+                    actionDelay(page, 900, 2200);
                     dismissCookieIfPresent(page);
                     waitForResultsPane(page);
                     scrollFeed(page, 10);
@@ -150,15 +159,25 @@ public class GoogleMapsPlaywrightScraper {
      * No datacenter (Render) o evento {@code load} costuma não disparar a tempo; {@code domcontentloaded} é mais
      * realista. Ainda assim, Google pode bloquear IP de servidor — aí só proxy residencial ({@code PROXY_SERVER}).
      */
+    /** Pausa configurável (leadmaps.playwright.action-delay-*) com jitter. */
+    private void actionDelay(Page page) {
+        LeadMapsProperties.Playwright pw = properties.getPlaywright();
+        actionDelay(page, pw.getActionDelayMinMs(), pw.getActionDelayMaxMs());
+    }
+
+    private static void actionDelay(Page page, int minMs, int maxMs) {
+        int lo = Math.min(minMs, maxMs);
+        int hi = Math.max(minMs, maxMs);
+        int ms = lo == hi ? lo : ThreadLocalRandom.current().nextInt(lo, hi + 1);
+        page.waitForTimeout(ms);
+    }
+
     private static void navigateMaps(Page page, String url) {
         page.navigate(
                 url,
                 new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
     }
 
-    /**
-     * Reduz RAM/CPU no servidor (Render): o Maps continua utilizável para scraping de texto/DOM.
-     */
     private static void blockHeavyResources(Page page) {
         page.route(
                 "**/*",
@@ -440,7 +459,7 @@ public class GoogleMapsPlaywrightScraper {
                                     + "button:has-text('Aceitar'), button:has-text('Accept')");
             if (accept.count() > 0) {
                 accept.first().click();
-                page.waitForTimeout(900);
+                actionDelay(page, 600, 1200);
             }
         } catch (Exception ignored) {
         }
@@ -449,7 +468,7 @@ public class GoogleMapsPlaywrightScraper {
     private void waitForResultsPane(Page page) {
         Locator feed = page.locator("div[role='feed']");
         feed.waitFor();
-        page.waitForTimeout(1200);
+        actionDelay(page, 900, 1700);
     }
 
     private void scrollFeed(Page page, int rounds) {
@@ -460,7 +479,7 @@ public class GoogleMapsPlaywrightScraper {
             } catch (Exception ex) {
                 log.debug("Scroll feed: {}", ex.getMessage());
             }
-            page.waitForTimeout(900);
+            actionDelay(page, 650, 1300);
         }
     }
 

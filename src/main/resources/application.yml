@@ -33,14 +33,34 @@ leadmaps:
     secret: ${JWT_SECRET:dev-only-change-me-leadmaps-pro-32chars-minimum-secret-key!!}
     access-expiration-minutes: ${JWT_ACCESS_MINUTES:15}
     refresh-expiration-days: ${JWT_REFRESH_DAYS:14}
+  # Render/Vercel: defina CORS_ORIGINS com a URL exata do front (sem barra no fim), vírgula para várias.
+  # Ex.: CORS_ORIGINS=http://localhost:4200,https://mineirador-lead-frontend.vercel.app
+  # Pré-deploys Vercel: pode usar padrão https://*.vercel.app (menos restritivo).
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
+  # playwright | apify — em produção com Railway use apify + APIFY_TOKEN.
+  extract:
+    provider: ${EXTRACT_PROVIDER:playwright}
+  apify:
+    token: ${APIFY_TOKEN:}
+    # Loja: compass/crawler-google-places → use compass~crawler-google-places (ou ID curto do console, ex. nwua9Gu5YrADL7ZDj)
+    actor-id: ${APIFY_ACTOR_ID:compass~crawler-google-places}
+    language: ${APIFY_LANGUAGE:pt-BR}
+    poll-interval-ms: ${APIFY_POLL_MS:3000}
+    max-wait-ms: ${APIFY_MAX_WAIT_MS:600000}
+  # Worker de fila (scraping no PC). Ative com WORKER_ENABLED=true localmente; no Render deixe false.
+  worker:
+    enabled: ${WORKER_ENABLED:false}
   # Proxy residencial/datacenter (Bright Data, ScrapingBee via proxy URL, etc.)
   playwright:
     headless: ${PLAYWRIGHT_HEADLESS:true}
     block-heavy-resources: ${PLAYWRIGHT_BLOCK_HEAVY:true}
     navigation-timeout-ms: ${PLAYWRIGHT_NAV_TIMEOUT_MS:120000}
     default-timeout-ms: ${PLAYWRIGHT_DEFAULT_TIMEOUT_MS:120000}
+    viewport-width: ${PLAYWRIGHT_VIEWPORT_W:1280}
+    viewport-height: ${PLAYWRIGHT_VIEWPORT_H:720}
+    action-delay-min-ms: ${PLAYWRIGHT_DELAY_MIN_MS:400}
+    action-delay-max-ms: ${PLAYWRIGHT_DELAY_MAX_MS:1400}
     # Ex.: http://brd-customer-xxx-zone-residential:password@brd.superproxy.io:33335
     proxy-server: ${PROXY_SERVER:}
     proxy-username: ${PROXY_USERNAME:}
